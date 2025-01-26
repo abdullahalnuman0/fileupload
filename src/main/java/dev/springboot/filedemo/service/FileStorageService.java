@@ -1,57 +1,66 @@
 package dev.springboot.filedemo.service;
 
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Random;
+import java.util.UUID;
 
 @Service
 public class FileStorageService {
 
-    private static String UPLOAD_DIR = null;
+
+    @Value("${project.image}")
+    private String path;
 
 
     // Save the file
-    public String storeFile(MultipartFile file, boolean isUser) {
+    public String storeFile(MultipartFile file) throws IOException {
 
-        try {
-            findUploadDir();
+        //File name
+        String name = file.getOriginalFilename();
 
-            String imageNameWidthPath = UPLOAD_DIR + File.separator +
-                    (isUser ? "user_" : "contact_") +
-                    System.currentTimeMillis() + new Random().nextInt(1000) + "." + file.getContentType().split("/")[1];
+        //random name generate
+        String randomID = UUID.randomUUID().toString();
+        randomID += name.substring(name.lastIndexOf('.'));
 
-            Files.copy(file.getInputStream(), Path.of(imageNameWidthPath),
-                    StandardCopyOption.REPLACE_EXISTING);
 
-            return imageNameWidthPath;
-        } catch (Exception e) {
-            return null;
+        //Full path
+        String fullPath = path + File.separator + randomID;
+
+
+        //create folder if not create
+        File f = new File(path);
+        if (!f.exists()) {
+            f.mkdir();
         }
+
+        //file copy
+        Files.copy(file.getInputStream(), Paths.get(fullPath), StandardCopyOption.REPLACE_EXISTING);
+
+        return randomID;
     }
 
-    private void findUploadDir() {
-        try {
-            if (UPLOAD_DIR == null)
-                UPLOAD_DIR = new ClassPathResource("static").getFile().getAbsolutePath();
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Could not create upload directory", e);
-        }
+
+    public InputStream getResource(String fileName) throws FileNotFoundException {
+        String fullPath = path + File.separator + fileName;
+        return new FileInputStream(fullPath);
     }
+
 
     /// TODO: delete old image
-    public boolean removeImage(String imagePath) {
+    public boolean removeImage(String imageName) {
 
         try {
-            return Files.deleteIfExists(Path.of(imagePath));
+            return Files.deleteIfExists(Path.of(path + File.separator + imageName));
 
         } catch (Exception e) {
             e.printStackTrace();
